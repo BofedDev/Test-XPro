@@ -1,0 +1,31 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-shop_db}
+      MYSQL_USER: ${MYSQL_USER:-shop_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?задайте MYSQL_PASSWORD в .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?задайте MYSQL_ROOT_PASSWORD в .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Порт MySQL наружу не публикуется: БД доступна только приложению
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-shop_user}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-shop_db}
+    ports:
+      - "8000:8000"
+
+volumes:
+  mysql_data:
